@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>BZ Price Checker</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff;
+      font-weight: 900;
+      font-size: 2.8rem;
+    }
+    #searchArea {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+      width: 100%;
+      max-width: 600px;
+      position: relative; /* 補完リスト表示用にrelative */
+    }
+    input {
+      padding: 14px 20px;
+      font-size: 18px;
+      width: 100%;
+      max-width: 350px;
+      border-radius: 25px;
+      border: none;
+      outline: none;
+      box-shadow: 0 0 10px rgba(0,255,255,0.6);
+      transition: box-shadow 0.3s ease;
+      background: #002a5c;
+      color: #aaffff;
+      text-align: center;
+    }
+    input:focus {
+      box-shadow: 0 0 20px #00ffff;
+      background: #004d99;
+      color: #fff;
+    }
+    button {
+      padding: 14px 30px;
+      font-size: 18px;
+      border-radius: 25px;
+      border: none;
+      background: #00ffff;
+      color: #003344;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00ffff;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    button:hover {
+      background: #33ffff;
+      box-shadow: 0 0 25px #33ffff;
+    }
+    .result {
+      margin-top: 30px;
+      font-size: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      display: inline-block;
+      padding: 25px 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px #00ffff;
+      max-width: 650px;
+      white-space: nowrap;
+      color: #00ffff;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* 自作補完リストの見た目 */
+    #autocomplete-list {
+      position: absolute;
+      top: 55px; /* inputの下に */
+      left: 0;
+      right: 0;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #003366;
+      border-radius: 0 0 15px 15px;
+      box-shadow: 0 4px 10px rgba(0,255,255,0.4);
+      z-index: 9999;
+      color: #aaffff;
+      font-size: 18px;
+      text-align: left;
+      cursor: pointer;
+    }
+    #autocomplete-list div {
+      padding: 10px 15px;
+      border-bottom: 1px solid #005599;
+      transition: background-color 0.2s ease;
+    }
+    #autocomplete-list div:last-child {
+      border-bottom: none;
+    }
+    #autocomplete-list div:hover, #autocomplete-list .autocomplete-active {
+      background-color: #00ffff;
+      color: #003344;
+      font-weight: bold;
+    }
+
+    /* 言語切替ボタン */
+    #langButtons {
+      margin-bottom: 25px;
+    }
+    #langButtons button {
+      margin: 0 8px;
+      padding: 10px 18px;
+      font-weight: 700;
+      border-radius: 15px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 12px #00ffff;
+      background: #003344;
+      color: #00ffff;
+      transition: background-color 0.3s ease;
+    }
+    #langButtons button:hover {
+      background: #006699;
+    }
+    #langButtons button.active {
+      background: #00ffff;
+      color: #003344;
+      box-shadow: 0 0 20px #00ffff;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 BZ Price Checker カスタム補完付き</h1>
+
+  <div id="langButtons">
+    <button id="btnJa" class="active">日本語</button>
+    <button id="btnEn">English</button>
+  </div>
+
+  <div id="searchArea">
+    <input
+      id="itemInput"
+      type="text"
+      placeholder="アイテム名を入力 (例: Enchanted Sugar)"
+      autocomplete="off"
+    />
+    <button id="searchBtn">検索</button>
+    <!-- 補完リスト -->
+    <div id="autocomplete-list" style="display:none;"></div>
+  </div>
+  <div id="result" class="result"></div>
+
+  <script>
+    // 言語データ
+    const langData = {
+      ja: {
+        title: '🧪 BZ Price Checker カスタム補完付き',
+        placeholder: 'アイテム名を入力 (例: Enchanted Sugar)',
+        searchBtn: '検索',
+        loading: '読み込み中...',
+        notFound: (item) => `❌「${item}」は見つかりませんでした。`,
+        buyPrice: '🛒 買値',
+        sellPrice: '💰 売値',
+        profit: '💸 利益(売値-買値)',
+        buyVolume: '📊 取引数 (買)',
+        sellVolume: '📊 取引数 (売)',
+      },
+      en: {
+        title: '🧪 BZ Price Checker with Custom Autocomplete',
+        placeholder: 'Enter item name (e.g., Enchanted Sugar)',
+        searchBtn: 'Search',
+        loading: 'Loading...',
+        notFound: (item) => `❌ "${item}" not found.`,
+        buyPrice: '🛒 Buy Price',
+        sellPrice: '💰 Sell Price',
+        profit: '💸 Profit (Sell - Buy)',
+        buyVolume: '📊 Transactions (Buy)',
+        sellVolume: '📊 Transactions (Sell)',
+      }
+    };
+
+    let currentLang = 'ja';
+
+    let products = null;
+    let popularItems = [];
+
+    async function fetchBazaarData() {
+      try {
+        const res = await fetch('https://api.hypixel.net/skyblock/bazaar');
+        const data = await res.json();
+        products = data.products;
+        return data;
+      } catch (e) {
+        console.error('API取得失敗', e);
+        alert('APIの取得に失敗しました。');
+      }
+    }
+
+    async function populatePopularItems() {
+      if (!products) await fetchBazaarData();
+
+      const entries = Object.entries(products);
+      const sorted = entries.sort((a,b) => {
+        const aVol = (a[1].quick_status.buyVolume||0) + (a[1].quick_status.sellVolume||0);
+        const bVol = (b[1].quick_status.buyVolume||0) + (b[1].quick_status.sellVolume||0);
+        return bVol - aVol;
+      });
+
+      popularItems = sorted.slice(0,30).map(([key]) => {
+        return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase());
+      });
+    }
+
+    function filterAutocomplete(value) {
+      const list = document.getElementById('autocomplete-list');
+      list.innerHTML = '';
+      if (!value) {
+        list.style.display = 'none';
+        return;
+      }
+
+      const filtered = popularItems.filter(item =>
+        item.toLowerCase().includes(value.toLowerCase())
+      );
+
+      if (filtered.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.textContent = item;
+        div.onclick = () => {
+          document.getElementById('itemInput').value = item;
+          list.innerHTML = '';
+          list.style.display = 'none';
+        };
+        list.appendChild(div);
+      });
+      list.style.display = 'block';
+    }
+
+    function findProductKey(input) {
+      if (!products) return null;
+
+      const keyUpper = input.trim().toUpperCase().replace(/ /g, '_');
+      if (products[keyUpper]) return keyUpper;
+
+      const inputLower = input.trim().toLowerCase();
+      for (const key of Object.keys(products)) {
+        const keyLower = key.toLowerCase().replace(/_/g, ' ');
+        if (keyLower.includes(inputLower)) return key;
+      }
+      return null;
+    }
+
+    async function checkPrice() {
+      const input = document.getElementById('itemInput').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = langData[currentLang].loading;
+
+      if (!products) await fetchBazaarData();
+
+      const key = findProductKey(input);
+      if (!key) {
+        resultDiv.innerHTML = langData[currentLang].notFound(input);
+        return;
+      }
+
+      const product = products[key];
+      const buyPriceNum = product.sell_summary[0]?.pricePerUnit;
+      const sellPriceNum = product.buy_summary[0]?.pricePerUnit;
+      const buyPrice = buyPriceNum?.toFixed(1) || 'N/A';
+      const sellPrice = sellPriceNum?.toFixed(1) || 'N/A';
+      const profit = (buyPrice !== 'N/A' && sellPrice !== 'N/A') ? (sellPriceNum - buyPriceNum).toFixed(1) : 'N/A';
+
+      const buyPerHour = (product.quick_status.buyMovingWeek || 0) / 168;
+      const sellPerHour = (product.quick_status.sellMovingWeek || 0) / 168;
+
+      resultDiv.innerHTML = `
+        <strong>${key.replace(/_/g, ' ')}</strong><br>
+        ${langData[currentLang].buyPrice}: ${buyPrice} coins<br>
+        ${langData[currentLang].sellPrice}: ${sellPrice} coins<br>
+        ${langData[currentLang].profit}: ${profit} coins<br>
+        ${langData[currentLang].buyVolume}: ${Math.floor(buyPerHour)} / hour<br>
+        ${langData[currentLang].sellVolume}: ${Math.floor(sellPerHour)} / hour
+      `;
+    }
+
+    // イベント登録
+    document.getElementById('itemInput').addEventListener('input', (e) => {
+      filterAutocomplete(e.target.value);
+    });
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      checkPrice();
+    });
+
+    document.addEventListener('click', e => {
+      if (!document.getElementById('searchArea').contains(e.target)) {
+        document.getElementById('autocomplete-list').style.display = 'none';
+      }
+    });
+
+    // 言語切替処理
+    const btnJa = document.getElementById('btnJa');
+    const btnEn = document.getElementById('btnEn');
+
+    function switchLang(lang) {
+      if (lang === currentLang) return;
+
+      currentLang = lang;
+      const btnActive = lang === 'ja' ? btnJa : btnEn;
+      const btnInactive = lang === 'ja' ? btnEn : btnJa;
+
+      btnActive.classList.add('active');
+      btnInactive.classList.remove('active');
+
+      // タイトル・プレースホルダー・ボタンテキストの更新
+      document.querySelector('h1').textContent = langData[lang].title;
+      document.getElementById('itemInput').placeholder = langData[lang].placeholder;
+      document.getElementById('searchBtn').textContent = langData[lang].searchBtn;
+
+      // 結果欄は消す（言語切替で表示をクリア）
+      document.getElementById('result').innerHTML = '';
+    }
+
+    btnJa.addEventListener('click', () => switchLang('ja'));
+    btnEn.addEventListener('click', () => switchLang('en'));
+
+    // 初期化
+    fetchBazaarData().then(populatePopularItems);
+  </script>
+</body>
+</html>
