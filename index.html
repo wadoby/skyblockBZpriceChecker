@@ -29,7 +29,7 @@
       margin-bottom: 30px;
       width: 100%;
       max-width: 600px;
-      position: relative; /* 補完リスト表示用にrelative */
+      position: relative;
     }
     input {
       padding: 14px 20px;
@@ -81,13 +81,12 @@
       letter-spacing: 0.05em;
     }
 
-    /* 自作補完リストの見た目 */
     #autocomplete-list {
       position: absolute;
-      top: 55px; /* inputの下に */
+      top: 55px;
       left: 0;
       right: 0;
-      max-height: 220px;
+      max-height: 300px;
       overflow-y: auto;
       background: #003366;
       border-radius: 0 0 15px 15px;
@@ -112,7 +111,6 @@
       font-weight: bold;
     }
 
-    /* 言語切替ボタン */
     #langButtons {
       margin-bottom: 25px;
     }
@@ -139,7 +137,7 @@
   </style>
 </head>
 <body>
-  <h1>🧪 BZ Price Checker カスタム補完付き</h1>
+  <h1>🧪 BZ Price Checker</h1>
 
   <div id="langButtons">
     <button id="btnJa" class="active">日本語</button>
@@ -147,20 +145,13 @@
   </div>
 
   <div id="searchArea">
-    <input
-      id="itemInput"
-      type="text"
-      placeholder="アイテム名を入力 (例: Enchanted Sugar)"
-      autocomplete="off"
-    />
+    <input id="itemInput" type="text" placeholder="アイテム名を入力 (例: Enchanted Sugar)" autocomplete="off" />
     <button id="searchBtn">検索</button>
-    <!-- 補完リスト -->
     <div id="autocomplete-list" style="display:none;"></div>
   </div>
   <div id="result" class="result"></div>
 
   <script>
-    // 言語データ
     const langData = {
       ja: {
         title: '🧪 BZ Price Checker カスタム補完付き',
@@ -189,7 +180,6 @@
     };
 
     let currentLang = 'ja';
-
     let products = null;
     let popularItems = [];
 
@@ -215,7 +205,7 @@
         return bVol - aVol;
       });
 
-      popularItems = sorted.slice(0,30).map(([key]) => {
+      popularItems = sorted.map(([key]) => {
         return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase());
       });
     }
@@ -237,7 +227,7 @@
         return;
       }
 
-      filtered.forEach(item => {
+      filtered.slice(0, 50).forEach(item => {
         const div = document.createElement('div');
         div.textContent = item;
         div.onclick = () => {
@@ -297,7 +287,6 @@
       `;
     }
 
-    // イベント登録
     document.getElementById('itemInput').addEventListener('input', (e) => {
       filterAutocomplete(e.target.value);
     });
@@ -312,7 +301,6 @@
       }
     });
 
-    // 言語切替処理
     const btnJa = document.getElementById('btnJa');
     const btnEn = document.getElementById('btnEn');
 
@@ -326,19 +314,16 @@
       btnActive.classList.add('active');
       btnInactive.classList.remove('active');
 
-      // タイトル・プレースホルダー・ボタンテキストの更新
       document.querySelector('h1').textContent = langData[lang].title;
       document.getElementById('itemInput').placeholder = langData[lang].placeholder;
       document.getElementById('searchBtn').textContent = langData[lang].searchBtn;
 
-      // 結果欄は消す（言語切替で表示をクリア）
       document.getElementById('result').innerHTML = '';
     }
 
     btnJa.addEventListener('click', () => switchLang('ja'));
     btnEn.addEventListener('click', () => switchLang('en'));
 
-    // 初期化
     fetchBazaarData().then(populatePopularItems);
   </script>
 </body>
